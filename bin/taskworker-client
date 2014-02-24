@@ -107,7 +107,7 @@ def new_job(options):
 
     if not (options.params is None):
         args = {}
-        for arg in options.args:
+        for arg in options.params:
             key,value = arg.split("=")
             if value[0] == "@":
                 # get the data from the file with that name if the name exists
