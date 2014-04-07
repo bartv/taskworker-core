@@ -109,21 +109,16 @@ instances to ensure quorum is achieved when a lock is requested. To start
 the distributed version set taskworker.distributed property to true.
 
 The taskworker-client script is a Python script that uses the built-in REST
-interface to interact with the taskworker-server. 
+interface to interact with the taskworker-server. Ensure that the python-prettytable package is installed.
 
 To run a workflow:
 
 *   Start the taskworker-server script
-    > /bin/taskworker-server
-
-
-
-To check for the available workflows, run
 ```bash
-/bin/taskworker-client workflows
+./bin/taskworker-server
 ```
-
-To start a workflow with a certain input file, run
+* Check for the available workflows, and start a workflow with a given input file
 ```bash
-/bin/taskworker-client newjob -w <workflow name> -d <input file>
+./bin/taskworker-client workflows
+./bin/taskworker-client newjob -w <workflow name> -d <input file>
 ```
