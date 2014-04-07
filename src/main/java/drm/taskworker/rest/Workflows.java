@@ -35,7 +35,7 @@ public class Workflows {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public String getJobs() {
+    public String getWorkflows() {
 		Config cfg = Config.getConfig();
         JsonArrayBuilder builder = Json.createArrayBuilder();
         
