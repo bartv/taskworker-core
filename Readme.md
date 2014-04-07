@@ -103,9 +103,10 @@ Only one scheduler per "cluster" must be started.
 *   rest: A rest interface to submit jobs and track their progress.  
 
 By default the middleware starts a non-distributed version which uses local
-locking only. In a distributed setting the workers need at least 3 cassandra 
+locking only. Ensure that cassandra listens to the localhost address (in /etc/cassandra/cassandra.yaml). 
+In a distributed setting the workers need at least 3 cassandra 
 instances to ensure quorum is achieved when a lock is requested. To start
-the distirbutedment version set taskworker.distributed property to true.
+the distributed version set taskworker.distributed property to true.
 
 Start the taskworker-server script
 ```bash
