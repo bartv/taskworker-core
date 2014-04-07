@@ -107,6 +107,14 @@ locking only. In a distributed setting the workers need at least 3 cassandra
 instances to ensure quorum is achieved when a lock is requested. To start
 the distirbutedment version set taskworker.distributed property to true.
 
-The taskworker-client script is a Python script that uses the built-in REST
-interface to interact with the taskworker-server.
+Start the taskworker-server script
+    > /bin/taskworker-server
 
+The taskworker-client script is a Python script that uses the built-in REST
+interface to interact with the taskworker-server. 
+
+To check for the available workflows, run
+    > /bin/taskworker-client workflows
+
+To start a workflow with a certain input file, run
+    > /bin/taskworker-client newjob -w <workflow name> -d <input file>
