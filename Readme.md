@@ -109,7 +109,7 @@ the distirbutedment version set taskworker.distributed property to true.
 
 Start the taskworker-server script
 ```bash
-    > /bin/taskworker-server
+/bin/taskworker-server
 ```
 
 The taskworker-client script is a Python script that uses the built-in REST
@@ -117,10 +117,10 @@ interface to interact with the taskworker-server.
 
 To check for the available workflows, run
 ```bash
-    > /bin/taskworker-client workflows
+/bin/taskworker-client workflows
 ```
 
 To start a workflow with a certain input file, run
 ```bash
-    > /bin/taskworker-client newjob -w <workflow name> -d <input file>
+/bin/taskworker-client newjob -w <workflow name> -d <input file>
 ```
