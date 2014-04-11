@@ -20,7 +20,9 @@
 package drm.taskworker;
 
 import static drm.taskworker.Entities.cs;
+import static drm.taskworker.config.Config.cfg;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -40,6 +42,8 @@ import com.netflix.astyanax.model.Rows;
 import drm.taskworker.config.WorkflowConfig;
 import drm.taskworker.queue.Queue;
 import drm.taskworker.queue.TaskHandle;
+import drm.taskworker.schedule.FairShare;
+import drm.taskworker.schedule.IScheduler;
 import drm.taskworker.schedule.WeightedRoundRobin;
 import drm.taskworker.tasks.JobStateListener;
 import drm.taskworker.tasks.Task;
@@ -59,6 +63,7 @@ public class Service {
 	private Map<String, Long> timeout = new HashMap<>();
 	
 	private Map<UUID,WorkflowConfig> wfConfig = new HashMap<>();
+	
 
 	/**
 	 * Get an instance of the service
@@ -150,7 +155,7 @@ public class Service {
 	public Task getTask(UUID workflowId, String workerType) {
 		List<TaskHandle> tasks;
 		try {
-			tasks = queue.leaseTasks(15, TimeUnit.SECONDS, 1, workerType, workflowId);
+			tasks = queue.leaseTasks(1000, TimeUnit.SECONDS, 1, workerType, workflowId);
 
 			// do work!
 			if (!tasks.isEmpty()) {
@@ -218,7 +223,13 @@ public class Service {
 
 		job.setFinishedAt(new Date());
 		job.calcStats();
+		
+		Collection<String> workers = job.getWorkflowConfig().getSteps().keySet();
 
+		removeJobPriority(job,workers);
+		removeStaleQueueItems(job,workers);
+		
+		
 		synchronized (listeners) {
 			for (JobStateListener wfsl : listeners) {
 				wfsl.jobFinished(job);
@@ -226,10 +237,34 @@ public class Service {
 		}
 	}
 	
+	private void removeStaleQueueItems(Job job, Collection<String> workers) {
+		try {
+			for(String worker : workers) {
+				int stales = cs().prepareQuery(Entities.CF_STANDARD1)
+				.withCql("SELECT * FROM task_queue WHERE queue_id = ?")
+				.asPreparedStatement()
+				.withStringValue(worker+"-"+job.getJobId().toString())
+				.execute().getResult().getRows().size();
+				
+				
+				logger.severe("Stale items in the queue " +worker+"-"+job.getJobId().toString() + " " + stales);
+
+				
+				cs().prepareQuery(Entities.CF_STANDARD1)
+						.withCql("DELETE FROM task_queue WHERE queue_id = ?")
+						.asPreparedStatement()
+						.withStringValue(worker+"-"+job.getJobId().toString())
+						.execute();
+			}
+		} catch (ConnectionException e) {
+			logger.severe("Unable to remove priorities from table for job " + job.getJobId());
+		}		
+	}
+
 	/**
 	 * Remove a job from the priorities table
 	 */
-	public void removeJobPriority(Job job, List<String> workers) {
+	public void removeJobPriority(Job job, Collection<String> workers) {
 		try {
 			for(String worker : workers) {
 				cs().prepareQuery(Entities.CF_STANDARD1)

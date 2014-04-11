@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.codahale.metrics.Timer.Context;
 import com.netflix.astyanax.Keyspace;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
 import com.netflix.astyanax.model.ColumnList;
@@ -39,6 +38,7 @@ import com.netflix.astyanax.model.Rows;
 import com.netflix.astyanax.query.PreparedCqlQuery;
 import com.netflix.astyanax.recipes.locks.ColumnPrefixDistributedRowLock;
 import com.netflix.astyanax.retry.BoundedExponentialBackoff;
+import dnet.minimetrics.TimerContext;
 
 import drm.taskworker.Entities;
 import drm.taskworker.config.Config;
@@ -79,7 +79,7 @@ public class Queue {
 	}
 	
 	private boolean lock(String workerName, UUID workflowID) {
-		Context tc = Metrics.timer("queue.lock").time();
+		TimerContext tc = Metrics.timer("queue.lock").time();
 		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
@@ -96,7 +96,7 @@ public class Queue {
 	}
 	
 	private boolean release(String workerName, UUID workflowID) {
-		Context tc = Metrics.timer("queue.unlock").time();
+		TimerContext tc = Metrics.timer("queue.unlock").time();
 		
 		String lockName = this.lockName(workerName, workflowID);
 		ColumnPrefixDistributedRowLock<String> lock = this.getLock(lockName); 
@@ -162,7 +162,7 @@ public class Queue {
 				return handles;
 			}
 	
-			Context tc = Metrics.timer("queue.lease").time();
+			TimerContext tc = Metrics.timer("queue.lease").time();
 			handles = leaseWithNoLock(lease, unit, limit, taskType, jobId);
 			tc.stop();
 	
@@ -197,6 +197,15 @@ public class Queue {
 					.asPreparedStatement();
 			
 			markDelete
+					.withStringValue(this.lockName(task.getWorkerName(), task.getJobID()))
+					.withUUIDValue(task.getId())
+					.execute().getResult();
+			
+			PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1)
+					.withCql("DELETE FROM task_queue WHERE queue_id = ? AND id = ?")
+					.asPreparedStatement();
+			
+			deleteTask
 					.withStringValue(this.lockName(task.getWorkerName(), task.getJobID()))
 					.withUUIDValue(task.getId())
 					.execute().getResult();
@@ -246,7 +255,11 @@ public class Queue {
 
 			// add all work tasks that do not have a lease on them
 			if (c.getBooleanValue("removed", null) == null || c.getBooleanValue("removed", null)) {
-				// ignore, strange cassandra crap going on
+				
+				UUID taskid = c.getUUIDValue("id", null);
+				
+				removeFromQueue(taskType, workflowId, taskid);
+				
 			} else {
 				long leased_until = c.getLongValue("leased_until", 0L);
 
@@ -291,11 +304,23 @@ public class Queue {
 		return handles;
 	}
 
+	private void removeFromQueue(String taskType, UUID workflowId, UUID taskid)
+			throws ConnectionException {
+		PreparedCqlQuery<String, String> deleteTask = cs.prepareQuery(Entities.CF_STANDARD1)
+				.withCql("DELETE FROM task_queue WHERE queue_id = ? AND id = ?")
+				.asPreparedStatement();
+		
+		deleteTask
+				.withStringValue(this.lockName(taskType, workflowId))
+				.withUUIDValue(taskid)
+				.execute().getResult();
+	}
+
 	/**
 	 * Remove a task from the queue
 	 */
 	public void finishTask(Task task) {
-		Context tc = Metrics.timer("queue.finish").time();
+		TimerContext tc = Metrics.timer("queue.finish").time();
 		// TODO: ensure that we still have a lease here
 		logger.info("Removing task " + task.getId());
 		try {
@@ -326,7 +351,7 @@ public class Queue {
 	 * Add a task to the queue
 	 */
 	public void addTask(Task task) {
-		Context tc = Metrics.timer("queue.addtask").time();
+		TimerContext tc = Metrics.timer("queue.addtask").time();
 		logger.info("Inserting task " + task.getId());
 		try {
 			PreparedCqlQuery<String, String> addTask = cs.prepareQuery(Entities.CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_QUORUM)

@@ -22,6 +22,9 @@ package drm.taskworker.tasks;
 import static drm.taskworker.Entities.cs;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 import com.netflix.astyanax.connectionpool.OperationResult;
@@ -88,9 +91,8 @@ public class ValueRef implements Serializable {
 	public void save() {
 		try {
 			cs().prepareQuery(Entities.CF_STANDARD1)
-				.withCql("INSERT INTO parameter (job_id, task_id, name, value) VALUES (?, ?, ?, ?);")
+				.withCql("INSERT INTO parameter (task_id, name, value) VALUES (?, ?, ?);")
 				.asPreparedStatement()
-				.withUUIDValue(this.getJobId())
 				.withUUIDValue(this.getTaskId())
 				.withStringValue(this.getKeyName())
 				.withByteBufferValue(this.value, ObjectSerializer.get())
@@ -107,9 +109,8 @@ public class ValueRef implements Serializable {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT value FROM parameter WHERE job_id = ? AND task_id = ? AND name = ?")
+					.withCql("SELECT value FROM parameter WHERE task_id = ? AND name = ?")
 					.asPreparedStatement()
-					.withUUIDValue(this.getJobId())
 					.withUUIDValue(this.getTaskId())
 					.withStringValue(this.keyName)
 					.execute();
@@ -134,6 +135,25 @@ public class ValueRef implements Serializable {
 	 */
 	public void setValue(Object val) {
 		this.value = val;
+	}
+
+	public void flatten() throws ParameterFoundException {
+		value = getValue();
+		
+		if(value instanceof Collection){
+			Collection c = (Collection) value;
+			List newvalue = new LinkedList<>();
+			value = newvalue;
+			for(Object o:c){
+				if(o instanceof ValueRef){
+					ValueRef child = (ValueRef)o;
+					child.flatten();
+					newvalue.add(child.getValue());
+				}else
+					newvalue.add(o);
+			}
+		}
+		
 	}
 	
 }
