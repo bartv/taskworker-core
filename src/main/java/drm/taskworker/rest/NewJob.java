@@ -49,8 +49,8 @@ public class NewJob {
     		@FormParam("arg0") String arg0,
     		@FormParam("json_data") String json_data) {
 		// get the delay
-		int after = Integer.valueOf(start_after);
-		int before = Integer.valueOf(finish_before);
+		long after = Long.valueOf(start_after);
+		long before = Long.valueOf(finish_before);
 		
 		// create a workflow and save it
 		Job job = new Job(workflowName);
