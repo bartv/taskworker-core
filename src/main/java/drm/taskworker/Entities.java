@@ -70,12 +70,12 @@ public class Entities {
 		// Using simple strategy
 		keyspace.createKeyspace((ImmutableMap.<String, Object>builder()
 				.put("strategy_options", ImmutableMap.<String, Object>builder()
-						.put("datacenter1", "1")
+						.put("datacenter1", "3")
 			            .build())
 			        .put("strategy_class", "NetworkTopologyStrategy")
 			        .build())
 		);
-		
+
 		keyspace.createColumnFamily(CF_STANDARD1, ImmutableMap.<String, Object>builder()
                 .put("default_validation_class", "LongType")
                 .put("key_validation_class",     "UTF8Type")
@@ -110,9 +110,9 @@ public class Entities {
 		} catch (ConnectionException e) {
 			try {
 				createKeyspace(ks);
-				
+
 				List<String> queries = new ArrayList<>();
-				queries.add("CREATE TABLE parameter (job_id uuid, task_id uuid, name text, value blob, PRIMARY KEY(job_id, task_id, name))");
+				queries.add("CREATE TABLE parameter (task_id uuid, name text, value blob, PRIMARY KEY(task_id, name))");
 
 				/*
 				 * type:
@@ -130,7 +130,7 @@ public class Entities {
 				queries.add("CREATE INDEX job_finished ON job (finished)");
 				queries.add("CREATE TABLE priorities (job_id uuid, worker_type text, weight float, PRIMARY KEY(worker_type, job_id))");
 				queries.add("CREATE TABLE join (job_id uuid, join_id uuid, n_tasks counter, primary KEY (job_id, join_id));");
-				
+
 				for (String q : queries) {
 					logger.info("Executing query for creating taskworker keyspace: " + q);
 					ks.prepareQuery(CF_STANDARD1).setConsistencyLevel(ConsistencyLevel.CL_ALL)
@@ -141,7 +141,7 @@ public class Entities {
 						e1.printStackTrace();
 					}
 				}
-				
+
 			} catch (ConnectionException ee) {
 				logger.warning("Unable to create keyspace and schema");
 				throw new IllegalStateException(ee);
@@ -158,7 +158,7 @@ public class Entities {
 
 		return cs;
 	}
-	
+
 	public static class YamlSerialiser<T> extends AbstractSerializer<T> {
 
 		@Override

@@ -496,16 +496,14 @@ public class Task {
 		try {
 			OperationResult<CqlResult<String, String>> result = cs()
 					.prepareQuery(Entities.CF_STANDARD1)
-					.withCql("SELECT * FROM parameter WHERE job_id = ? AND task_id = ?")
+					.withCql("SELECT * FROM parameter WHERE task_id = ?")
 					.asPreparedStatement()
-					.withUUIDValue(this.getJobId())
 					.withUUIDValue(this.getId())
 					.execute();
 
 			for (Row<String, String> row : result.getResult().getRows()) {
 				ColumnList<String> columns = row.getColumns();
 
-				UUID jobId = columns.getUUIDValue("job_id", null);
 				UUID taskId = columns.getUUIDValue("task_id", null);
 				String name = columns.getStringValue("name", null);
 				try {
